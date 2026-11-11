@@ -436,6 +436,11 @@ test('repair source metadata binds the corrected candidate and explicit changed 
   [
     "instance-operations.instance-settings",
     "expectedOutcome"
+  ],
+  // The person names the private task they mean; "this" in the standing chat named the chat itself (tasks.share-private-task).
+  [
+    "tasks.share-private-task",
+    "originalQuery"
   ]
 ]);
   for (const change of repair.changedFields) {
