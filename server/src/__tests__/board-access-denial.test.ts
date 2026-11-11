@@ -48,6 +48,8 @@ describe("board-only denial", () => {
     ["get", "/api/plugins/ui-contributions", "[Open plugin settings](/<prefix>/company/settings/instance/plugins)"],
     ["post", `/api/projects/${AGENT_ID}/access-members`, `[Open the project's access settings](/<prefix>/projects/${AGENT_ID}/configuration)`],
     ["delete", `/api/projects/${AGENT_ID}/access-members/m-1`, `[Open the project's access settings](/<prefix>/projects/${AGENT_ID}/configuration)`],
+    ["get", "/api/instance/settings/experimental", "[Open Experimental settings](/<prefix>/company/settings/instance/experimental)"],
+    ["patch", "/api/instance/settings/experimental", "[Open Experimental settings](/<prefix>/company/settings/instance/experimental)"],
   ] as const)("tells an agent %s %s is final and names the board page", async (method, path, link) => {
     const res = await request(createApp(agentActor))[method](path).expect(403);
     expect(res.body.error).toBe("Board access required");
@@ -116,6 +118,19 @@ describe("board-only denial", () => {
       const res = await request(createApp(agentActor)).post(`/api/plugins/${AGENT_ID}/config`).expect(403);
       expect(res.body.remediation).toContain("this denial is final");
       expect(res.body.remediation).not.toContain("/instance/plugins");
+    } finally {
+      if (previous === undefined) delete process.env.PAPERCLIP_HIDDEN_SETTINGS;
+      else process.env.PAPERCLIP_HIDDEN_SETTINGS = previous;
+    }
+  });
+
+  it("does not link Experimental settings while the operator hides that page", async () => {
+    const previous = process.env.PAPERCLIP_HIDDEN_SETTINGS;
+    process.env.PAPERCLIP_HIDDEN_SETTINGS = "instance.experimental";
+    try {
+      const res = await request(createApp(agentActor)).patch("/api/instance/settings/experimental").expect(403);
+      expect(res.body.remediation).toContain("this denial is final");
+      expect(res.body.remediation).not.toContain("/instance/experimental");
     } finally {
       if (previous === undefined) delete process.env.PAPERCLIP_HIDDEN_SETTINGS;
       else process.env.PAPERCLIP_HIDDEN_SETTINGS = previous;
