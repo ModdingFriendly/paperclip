@@ -2936,8 +2936,11 @@ describe("agent issue mutation checkout ownership", () => {
       }));
     });
 
-    it.each(["in_progress", "in_review"])("persists a human handoff from %s without waiting for its own slow shutdown", async status => {
+    it.each([
+      ["legacy", "in_progress"], ["legacy", "in_review"], ["native", "in_progress"], ["native", "in_review"],
+    ])("persists a %s run's human handoff from %s without cancelling the run", async (runtimeMode, status) => {
       mockIssueService.getById.mockResolvedValue(makeIssue({ status, executionRunId: ownerRunId }));
+      mockHeartbeatService.getRun.mockResolvedValue({ ...runningRun, runtimeMode });
       mockHeartbeatService.cancelRun.mockRejectedValue(new Error("Execution is still stopping; termination has not been verified."));
 
       const res = await request(handoffApp({ ...ownerActor(), source: "agent_jwt" }))
@@ -3011,15 +3014,15 @@ describe("agent issue mutation checkout ownership", () => {
       expect(mockHeartbeatService.cancelRun).not.toHaveBeenCalled();
     });
 
-    it.each(["board", "agent_key", "other_run", "native", "other_issue", "other_agent", "other_company"])(
+    it.each(["board", "agent_key", "other_run", "native_board", "other_issue", "other_agent", "other_company"])(
       "still requires a verified stop for %s reassignment", async scenario => {
         let actor: Record<string, unknown> = { ...ownerActor(), source: "agent_jwt" };
-        if (scenario === "board") actor = boardActor();
+        if (scenario === "board" || scenario === "native_board") actor = boardActor();
         if (scenario === "agent_key") actor = ownerActor();
         const run = {
           ...runningRun,
           ...(scenario === "other_run" ? { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } : {}),
-          ...(scenario === "native" ? { runtimeMode: "native" } : {}),
+          ...(scenario === "native_board" ? { runtimeMode: "native" } : {}),
           ...(scenario === "other_issue" ? { contextSnapshot: { issueId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } } : {}),
           ...(scenario === "other_agent" ? { agentId: peerAgentId } : {}),
           ...(scenario === "other_company" ? { companyId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } : {}),
@@ -3301,10 +3304,7 @@ describe("agent issue mutation checkout ownership", () => {
       expect(mockIssueService.update.mock.calls[0]?.[1]).toMatchObject({ status: "in_review" });
     });
 
-    it("does not intercept a native run handing its task to a human", async () => {
-      // A native handoff still stops the outgoing run first; confirm that stop
-      // so the request reaches the update instead of the stop-unconfirmed 409.
-      mockHeartbeatService.cancelRun.mockResolvedValue({ ...nativeRun, status: "cancelled" });
+    it("does not intercept a native run handing its task to a human, and does not cancel that run", async () => {
       const handoff = { assigneeAgentId: null, assigneeUserId: "board-user", status: "in_review" };
 
       const res = await request(createApp(runActor(), createRunContextDb({}, ownerAgentId, ownerRunId, [], true)))
@@ -3312,10 +3312,8 @@ describe("agent issue mutation checkout ownership", () => {
 
       expect(res.status, JSON.stringify(res.body)).toBe(200);
       expect(res.body).toMatchObject(handoff);
-      expect(mockHeartbeatService.cancelRun).toHaveBeenCalledWith(ownerRunId, expect.anything(), expect.anything());
+      expect(mockHeartbeatService.cancelRun).not.toHaveBeenCalled();
       expect(mockIssueService.update).toHaveBeenCalledTimes(1);
-      expect(mockHeartbeatService.cancelRun.mock.invocationCallOrder[0])
-        .toBeLessThan(mockIssueService.update.mock.invocationCallOrder[0]!);
       expect(mockIssueService.update.mock.calls[0]?.[1]).toMatchObject(handoff);
     });
 

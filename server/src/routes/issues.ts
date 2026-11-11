@@ -22,7 +22,7 @@ import { activityService } from "../services/activity.js";
 import { listIssueSummaries } from "../services/issue-summaries.js";
 import { listIssueStatusBlockerAttention } from "../services/issue-status-presentation.js";
 import { assertNoCaseHandoffMutation } from "../services/heartbeat/case-handoff-lifecycle.js";
-import { assertLegacyRunTaskOwnership } from "../legacy-run-task-ownership.js";
+import { assertHandedOffRunTaskOwnership } from "../run-task-ownership.js";
 import { runRetainsIssueIdentity } from "../services/task-repository-acquisition.js";
 import { withConversationReadState } from "../services/agent-chat-read-state.js";
 import { markIssueReadSchema } from "@paperclipai/shared";
@@ -5816,7 +5816,7 @@ export function issueRoutes(
     if (req.actor.source === "agent_jwt" && req.actor.runId &&
         issue.assigneeAgentId === null && issue.assigneeUserId) {
       const run = await heartbeat.getRun(req.actor.runId);
-      if (run?.agentId === actorAgentId) assertLegacyRunTaskOwnership(run, issue);
+      if (run?.agentId === actorAgentId) assertHandedOffRunTaskOwnership(run, issue);
     }
     // Task-watchdog runs receive a scoped *grant* to mutate issues inside the
     // watched subtree. This must be evaluated before the base assignee-ownership
@@ -15532,13 +15532,18 @@ export function issueRoutes(
           agentId: existing.assigneeAgentId,
         });
         const runToStopForReassignment = await resolveActiveIssueRun(existing);
+        // The run handing its own task to a person finishes its turn instead of
+        // cancelling itself. Native and legacy alike: the reassignment clears
+        // the execution lock, the native tool binding and finalizer stop acting
+        // for a task the run no longer owns, and later REST mutations from the
+        // outgoing run are rejected (assertHandedOffRunTaskOwnership).
         const isHumanSelfHandoff =
           req.actor.type === "agent" &&
           req.actor.source === "agent_jwt" &&
           nextAssigneeAgentId === null &&
           typeof nextAssigneeUserId === "string" &&
           req.actor.agentId === existing.assigneeAgentId &&
-          runToStopForReassignment?.runtimeMode === "legacy" &&
+          (runToStopForReassignment?.runtimeMode === "legacy" || runToStopForReassignment?.runtimeMode === "native") &&
           runToStopForReassignment.id === req.actor.runId &&
           runToStopForReassignment.agentId === req.actor.agentId &&
           runToStopForReassignment.companyId === existing.companyId &&

@@ -132,6 +132,28 @@ export function supersedeStaleOwnerCompletion(
   };
 }
 
+/**
+ * A run that handed its own task to a person keeps running and finishes its
+ * turn. Its result is history: it cannot move the person's task, wake the
+ * outgoing agent, or record a blocker on it. A governed request still opens
+ * its interaction: the gate belongs to the request, not to the task owner.
+ */
+export function supersedeHandedOffDecision(
+  decision: NativeStatusDecision,
+  issue: { status: string; assigneeAgentId: string | null; assigneeUserId: string | null },
+): NativeStatusDecision {
+  if (decision.statusAction === "preserve" || issue.assigneeAgentId !== null || !issue.assigneeUserId) return decision;
+  if (decision.effects.some(effect => effect.kind === "create_interaction")) return decision;
+  return {
+    policyVersion: NATIVE_STATUS_ARBITER_POLICY_VERSION,
+    statusAction: "preserve",
+    toStatus: issue.status as NativeAuthoritativeIssueStatus,
+    reasonCode: "completion_owner_superseded",
+    unblockDescriptor: null,
+    effects: [],
+  };
+}
+
 /** Pure authority boundary: model prose is evidence, never a status command. */
 export function arbitrateNativeStatus(input: {
   assessment: NativeEvidenceAssessment;

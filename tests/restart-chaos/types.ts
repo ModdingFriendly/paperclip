@@ -29,8 +29,9 @@ export type TaskFaultKind = FaultKind | "K13" | "K0" | ProviderFaultKind;
  * L1: high-output, high-accounting run for database contention (contention.ts).
  * F1: an absolute symlink pointing out of the repository workspace, kept at rest (staging save-back class F).
  * T1: a 100-second shell tool in the agent's workspace, so a fault lands while the remote Runner runs a tool (staging class R).
+ * H2: the agent's own last step hands the task to the person who created it, in review (staging class H).
  */
-export const WORKLOAD_IDS = ["A1", "B1", "B5", "C1", "M1", "G1", "H1", "R1", "S1", "Q1", "L1", "Q2", "Q3", "F1", "T1"] as const;
+export const WORKLOAD_IDS = ["A1", "B1", "B5", "C1", "M1", "G1", "H1", "R1", "S1", "Q1", "L1", "Q2", "Q3", "F1", "T1", "H2"] as const;
 export type WorkloadId = (typeof WORKLOAD_IDS)[number];
 
 export const ADAPTER_IDS = ["codex", "claude", "opencode"] as const;
@@ -329,6 +330,18 @@ export interface OracleArtifacts {
   contention?: import("./contention.js").ContentionEvidence;
   /** Q2, Q3: what the board did and what the task, its runs and the harness's app saw. */
   journey?: import("./journeys.js").JourneyArtifacts;
+  /** H2: who owns the task at rest, and how its runs ended. */
+  handoff?: HandoffArtifacts;
+}
+
+/** H2: the task's owner and execution state at rest, and each run's terminal state. */
+export interface HandoffArtifacts {
+  assigneeAgentId: string | null;
+  assigneeUserId: string | null;
+  createdByUserId: string | null;
+  executionBlocker: boolean;
+  activeRecoveryAction: boolean;
+  runs: Array<{ id: string; status: string; errorCode: string | null }>;
 }
 
 /** What the board did for a governance task (G1, H1), and what the observer saw. */
