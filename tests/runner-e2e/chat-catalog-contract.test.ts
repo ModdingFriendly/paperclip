@@ -32,7 +32,7 @@ describe("catalog oracle contract", () => {
     // agents.restore-instructions retargeted to no saved history (instruction saves keep none since #14420).
     // access.manage-membership retargeted to read-and-route; activity.routine-audit builds real same-morning history.
     // gateways-profiles.create-gateway and rotate-token: agents keep delegated gateway/token authority and never receive token values.
-    expect(chatCatalogInventoryDigest).toBe("48fdd6e646117851eee6e309c914fadbc80f2dd7ac4f90eb1538de70e18c4c6c");
+    expect(chatCatalogInventoryDigest).toBe("bb91452e7dfa40050bad20485c09a03e9c4ccb4befc243fc66d24c57abe13557");
     for (const implementation of chatCatalogCases) expect(chatCatalogScenarios.some(row => row.id === implementation.scenarioId)).toBe(true);
   });
 });
