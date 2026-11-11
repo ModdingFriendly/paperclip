@@ -6045,6 +6045,7 @@
       "chat-catalog-domains/external-team-install.ts",
       "../../server/src/adapters/registry.ts",
       "../../packages/adapters/opencode-local/src/server/test.ts",
+      "../../packages/adapters/opencode-local/src/server/parse.ts",
       "codex-subscription-fixture.ts",
       "chat-catalog-domains/external-support.ts",
       "chat-catalog-domains/internal-support.ts",
@@ -6052,7 +6053,7 @@
       "chat-flow.ts",
       "chat-scenarios/teams.yaml"
     ],
-    "oracleVersion": "paperclip.chat-catalog.team-configure.v2",
+    "oracleVersion": "paperclip.chat-catalog.team-configure.v3",
     "expectedRunCount": 2,
     "expectedHumanMessageCount": 2,
     "turnTimeoutMs": 120000,
