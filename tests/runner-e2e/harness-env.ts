@@ -79,6 +79,9 @@ export function runnerE2EServerControlPaths(temporaryRoot: string) {
       controlDirectory,
       "server-restart.ack.json",
     ),
+    // The server's test-only run accounting fault (server/src/services/accounting-fault-injection.ts)
+    // reads this file; it is absent, and so disarmed, unless a case writes a task id into it.
+    accountingFaultControlPath: path.join(controlDirectory, "accounting-fault"),
   };
 }
 

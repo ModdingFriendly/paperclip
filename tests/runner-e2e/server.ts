@@ -66,6 +66,7 @@ const {
   controlDirectory,
   restartRequestPath,
   restartAcknowledgementPath: restartAckPath,
+  accountingFaultControlPath,
 } = runnerE2EServerControlPaths(temporaryRoot);
 const restartTimeoutMs = 180_000;
 const gracefulStopTimeoutMs = 30_000;
@@ -126,6 +127,8 @@ const serverEnvironment = buildPaperclipServerEnvironment(installedRelease
   // Onboarding normally opens the app after listen. Browser ownership belongs
   // to Playwright in this harness, so never create a developer desktop tab.
   PAPERCLIP_OPEN_ON_LISTEN: "false",
+  // Disarmed unless a case writes its own task id into this attempt-private file.
+  PAPERCLIP_ACCOUNTING_FAULT_CONTROL: accountingFaultControlPath,
   ...vaultEnvironment,
   ...teamCatalogEnvironment,
   ...workspaceStorage,

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { accountingIdentityCases, leadApiCalls, nativeAccountingPrerequisite, type LeadApiCall } from "./identity-accounting.js";
+import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { accountingFaultControl, accountingIdentityCases, leadApiCalls, nativeAccountingPrerequisite, type LeadApiCall } from "./identity-accounting.js";
 import { callApiInputDigest } from "./api-read-receipts.js";
 import type { IdentityObservation } from "./identity-support.js";
 const costRead = (runId: string, operationId: string, status = 200, digest = "d"): LeadApiCall => ({ runId, operationId, digest, ok: status < 300, status });
@@ -75,6 +78,23 @@ describe("actual saved native accounting contexts", () => {
     }
     const denied = valid("budgets-costs.repair-cost-recording"); (denied.state.leadApiCalls as LeadApiCall[]).push(costRead("initial", "POST /api/companies/{companyId}/costs/retry-accounting", 403)); expect(grade(denied).passed).toBe(true);
     const comment = valid("budgets-costs.repair-cost-recording"); (comment.state.leadApiCalls as LeadApiCall[]).push(costRead("initial", "POST /api/issues/{id}/comments", 201)); expect(grade(comment).passed).toBe(true);
+  });
+  it("recorded-but-unpriced usage is still unresolved, never a confirmed repair", () => {
+    const o = valid("budgets-costs.repair-cost-recording"); o.state.retryAccounted = true; o.state.retryQuality = { runs: [], events: [] };
+    o.state.retryLedger = [{ agentId: "morgan", eventCount: 1, estimatedEventCount: 0, unpricedEventCount: 1 }];
+    o.state.confirmedPricedRepair = true; o.state.afterStillUnresolved = false; expect(accountingIdentityCases[1]!.grade(o).passed).toBe(false);
+    o.state.confirmedPricedRepair = false; o.state.afterStillUnresolved = true; expect(accountingIdentityCases[1]!.grade(o).passed).toBe(true);
+  });
+  it("arms and disarms only the attempt's own accounting fault file", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "accounting-fault-case-"));
+    try {
+      await expect(accountingFaultControl({})).rejects.toThrow(/owned runner instance/);
+      await expect(accountingFaultControl({ PAPERCLIP_RUNNER_E2E_TEMP_ROOT: root })).rejects.toThrow();
+      await mkdir(path.join(root, "control"));
+      const fault = await accountingFaultControl({ PAPERCLIP_RUNNER_E2E_TEMP_ROOT: root });
+      await fault.arm("task-1"); expect(await readFile(path.join(root, "control", "accounting-fault"), "utf8")).toBe("task-1\n");
+      await fault.disarm(); expect(await readFile(path.join(root, "control", "accounting-fault"), "utf8")).toBe("");
+    } finally { await rm(root, { recursive: true, force: true }); }
   });
   it("pairs redacted call_api uses with their results by run and item id", () => {
     const use = (runId: string, id: string, operationId: string) => ({ runId, payload: { prpEvent: { payload: { item: { type: "tool_use", name: "call_api", id, input: { operationId, apiPayloadRedacted: true, apiPayloadSha256: `sha-${id}` } } } } } });

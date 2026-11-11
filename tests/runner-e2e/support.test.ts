@@ -922,6 +922,7 @@ describe("runner E2E server isolation", () => {
         "control",
         "server-restart.ack.json",
       ),
+      accountingFaultControlPath: path.join("/tmp/cell", "control", "accounting-fault"),
     });
   });
 
